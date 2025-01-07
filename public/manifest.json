@@ -1,0 +1,19 @@
+{
+  "manifest_version": 3,
+  "name": "ChatGPT Text Refiner",
+  "version": "1.0",
+  "description": "Suggests and refines text for ChatGPT input.",
+  "permissions": ["scripting", "activeTab"],
+  "host_permissions": ["https://chatgpt.com/*"],
+  "action": {
+    "default_popup": "index.html",
+    "default_icon": "logo512.png"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://chatgpt.com/*"],
+      "js": ["content.js"],
+      "all_frames": true 
+    }
+  ]
+}

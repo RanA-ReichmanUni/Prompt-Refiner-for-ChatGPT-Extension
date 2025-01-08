@@ -40,12 +40,17 @@ const observer = new MutationObserver((mutations) => {
             headers: {
               "Content-Type": "application/json",
             },
-            body: JSON.stringify({ text: textContent }),
+            body: JSON.stringify({ textContent }),
           });
 
           if (response.ok) {
             const data = await response.json();
             console.log("Refinements received:", data);
+     
+
+            // Example of injecting the refined text into the input field
+            const refinedText = data.refinements.message1; // Use the first refinement as an example
+            injectTextIntoField(refinedText);
 
             // Example of handling the response
              // Send the refined data to the popup
@@ -78,6 +83,24 @@ observer.observe(document.body, {
   childList: true,
   subtree: true,
 });
+
+
+// Helper function to inject text into the ChatGPT input field
+function injectTextIntoField(text) {
+  const inputField = document.querySelector('div#prompt-textarea > p');
+  if (inputField) {
+    inputField.textContent = text;
+
+    // Dispatch input and change events to ensure ChatGPT recognizes the update
+    inputField.dispatchEvent(new Event("input", { bubbles: true }));
+    inputField.dispatchEvent(new Event("change", { bubbles: true }));
+
+    console.log("Injected text into the input field:", text);
+  } else {
+    console.error("Input field not found for text injection.");
+  }
+}
+
 
 if (chrome && chrome.runtime) {
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {

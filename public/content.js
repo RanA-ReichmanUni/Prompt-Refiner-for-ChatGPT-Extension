@@ -1,24 +1,6 @@
 // Listener to handle messages sent by the popup or background script
 console.log("Content script is running.");
 
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (message.action === "getOriginalText") {
-    console.log("Received request for original text from popup.");
-
-    // Locate the ChatGPT input field
-    const targetElement = document.querySelector('div#prompt-textarea > p');
-
-    if (targetElement) {
-      const textContent = targetElement.textContent; // Extract the text
-      console.log("Original text retrieved:", textContent);
-      sendResponse({ text: textContent }); // Send the text back to the popup
-    } else {
-      console.error("ChatGPT input field not found.");
-      sendResponse({ text: "" }); // Respond with an empty string if not found
-    }
-  }
-  return true; // Keeps the message channel open for asynchronous responses
-});
 
 // Wait for the DOM to fully load before injecting the button
 const observer = new MutationObserver((mutations) => {
@@ -41,7 +23,7 @@ const observer = new MutationObserver((mutations) => {
     refineButton.style.border = "none";
     refineButton.style.borderRadius = "5px";
     refineButton.style.cursor = "pointer";
-    refineButton.addEventListener("click", () => {
+    refineButton.addEventListener("click", async () => {
       const targetElement = document.querySelector('div#prompt-textarea > p');
       if (targetElement) {
         const textContent = targetElement.textContent;
@@ -49,14 +31,40 @@ const observer = new MutationObserver((mutations) => {
           alert("No text to refine!");
           return;
         }
-        chrome.runtime.sendMessage({ action: "refineText", text: textContent }, (response) => {
-          if (chrome.runtime.lastError) {
-            console.error("Error sending message:", chrome.runtime.lastError.message);
-          } else if (response && response.refinedText) {
-            console.log("Refined text received:", response.refinedText);
-            targetElement.textContent = response.refinedText;
+        console.log("Sending text to backend:", textContent);
+
+        // Call the backend API
+        try {
+          const response = await fetch("http://localhost:3000/refine", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ text: textContent }),
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            console.log("Refinements received:", data);
+
+            // Example of handling the response
+             // Send the refined data to the popup
+             chrome.runtime.sendMessage({
+              action: "refinedData",
+              refinements: {
+                message1: data.message1,
+                message2: data.message2,
+                message3: data.message3,
+              },
+            });
+          } else {
+            console.error("Failed to fetch refinements:", response.statusText);
+            alert("Failed to fetch refinements from the backend.");
           }
-        });
+        } catch (error) {
+          console.error("Error connecting to the backend:", error);
+          alert("Error connecting to the backend.");
+        }
       } else {
         console.error("Input field not found when Refine button clicked.");
       }

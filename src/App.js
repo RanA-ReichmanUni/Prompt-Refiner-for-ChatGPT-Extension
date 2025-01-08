@@ -11,6 +11,7 @@ const App = () => {
 
   // Fetch the real text dynamically when the app loads
   useEffect(() => {
+    console.log("fetching from useEffect()")
     fetchOriginalText(); // Fetch the text from ChatGPT
   }, []);
 

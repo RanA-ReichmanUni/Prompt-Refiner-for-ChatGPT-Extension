@@ -1,21 +1,11 @@
 // Listener to handle messages sent by the popup or background script
 console.log("Content script is running.");
 
-
-// Wait for the DOM to fully load before injecting the button
-const observer = new MutationObserver((mutations) => {
-  const composerBackground = document.querySelector('div#composer-background');
-  const existingButtonsContainer = composerBackground ? composerBackground.querySelector('.flex.h-\\[44px\\].items-center.justify-between') : null;
-
-  if (existingButtonsContainer) {
-    observer.disconnect();
-
-    const externalContainer = document.createElement('div');
-    externalContainer.style.position = 'relative';
-    externalContainer.style.zIndex = '9999';
-    externalContainer.style.order = '2';
-
+// Function to add the Refine button
+function addRefineButton(composerBackground) {
+  if (!composerBackground.querySelector('#myRefineButton')) {
     const refineButton = document.createElement("button");
+    refineButton.id = "myRefineButton";
     refineButton.textContent = "Refine";
     refineButton.style.padding = "10px 15px";
     refineButton.style.backgroundColor = "#4CAF50";
@@ -23,7 +13,15 @@ const observer = new MutationObserver((mutations) => {
     refineButton.style.border = "none";
     refineButton.style.borderRadius = "5px";
     refineButton.style.cursor = "pointer";
-    refineButton.addEventListener("click", async () => {
+    refineButton.style.position = "relative";
+    refineButton.style.zIndex = "9999";
+    refineButton.style.order = "2";
+
+    refineButton.addEventListener("click", async (event) => {
+      // Prevent the event from propagating and triggering other events
+      event.stopPropagation();
+      event.preventDefault();
+
       const targetElement = document.querySelector('div#prompt-textarea > p');
       if (targetElement) {
         const textContent = targetElement.textContent;
@@ -46,15 +44,13 @@ const observer = new MutationObserver((mutations) => {
           if (response.ok) {
             const data = await response.json();
             console.log("Refinements received:", data);
-     
 
-            // Example of injecting the refined text into the input field
-            const refinedText = data.refinements.message1; // Use the first refinement as an example
+            // Inject refined text into the input field
+            const refinedText = data.refinements.message1; // Example
             injectTextIntoField(refinedText);
 
-            // Example of handling the response
-             // Send the refined data to the popup
-             chrome.runtime.sendMessage({
+            // Send the refined data to the popup
+            chrome.runtime.sendMessage({
               action: "refinedData",
               refinements: {
                 message1: data.message1,
@@ -74,8 +70,17 @@ const observer = new MutationObserver((mutations) => {
         console.error("Input field not found when Refine button clicked.");
       }
     });
-    externalContainer.appendChild(refineButton);
-    existingButtonsContainer.appendChild(externalContainer);
+
+    // Append the Refine button to the composer background
+    composerBackground.appendChild(refineButton);
+  }
+}
+
+// MutationObserver to monitor DOM changes and add the Refine button
+const observer = new MutationObserver(() => {
+  const composerBackground = document.querySelector('div#composer-background');
+  if (composerBackground) {
+    addRefineButton(composerBackground);
   }
 });
 
@@ -83,7 +88,6 @@ observer.observe(document.body, {
   childList: true,
   subtree: true,
 });
-
 
 // Helper function to inject text into the ChatGPT input field
 function injectTextIntoField(text) {
@@ -100,7 +104,6 @@ function injectTextIntoField(text) {
     console.error("Input field not found for text injection.");
   }
 }
-
 
 if (chrome && chrome.runtime) {
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
